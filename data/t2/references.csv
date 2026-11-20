@@ -1,0 +1,6 @@
+reference,file,original_csp_energy_kjmol
+csp_global_min,references/T2_csp_global_min.cif,-238.2454
+alpha,references/T2_alpha.cif,-172.472
+beta,references/T2_beta.cif,-182.385
+gamma,references/T2_gamma.cif,-175.813
+delta,references/T2_delta.cif,-190.534

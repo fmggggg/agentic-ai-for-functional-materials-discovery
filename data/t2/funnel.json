@@ -1,0 +1,6 @@
+{
+ "sampled": 100,
+ "relaxed": 82,
+ "converged": 75,
+ "relaxation": "MACE-OFF23 small, LBFGS + FrechetCellFilter, fmax 0.1 eV/A, <= 500 steps"
+}

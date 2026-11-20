@@ -1,0 +1,5 @@
+__pycache__/
+.ipynb_checkpoints/
+_mol-cspy/
+data/_landscape_parts/
+runs/

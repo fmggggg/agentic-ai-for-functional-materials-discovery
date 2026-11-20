@@ -1,0 +1,18 @@
+{
+ "generated": 100,
+ "seeds_tried": 143,
+ "relaxed": 100,
+ "converged": 100,
+ "converged_intact": 100,
+ "gpu_hours": 0.2,
+ "plan": {
+  "P-1": 40,
+  "P2_1/c": 30,
+  "C2/c": 10,
+  "P2_1": 10,
+  "P2_12_12_1": 10
+ },
+ "generation": "mol-CSPy CrystalGenerator, Z'=1, Sobol seeds from 1, commit 89f3b2ad7c",
+ "relaxation": "MACE-OFF23 small, LBFGS maxstep 0.1 + FrechetCellFilter, fmax 0.1 eV/A, <= 500 steps",
+ "matching": "OXtalign, 15 molecules"
+}

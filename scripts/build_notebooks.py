@@ -490,7 +490,7 @@ def write_tutor(name, cells):
 
 if __name__ == "__main__":
     write("01_anatomy_of_a_molecular_crystal.ipynb", nb1)
-    write("02_mini_csp_random_search.ipynb", nb2)
+    write("02_mini_csp_random_search.ipynb", nb2, extra=" oxtalign")
     write("03_generative_ai_csp.ipynb", nb3, extra=" oxtalign average-minimum-distance")
     write("04_classical_csp_molcspy.ipynb", nb4, extra=" average-minimum-distance toml")
     write_tutor("tutor/precompute_t2_molcspy_colab.ipynb", tutor)

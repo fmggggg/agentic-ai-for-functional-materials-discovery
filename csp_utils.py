@@ -376,6 +376,7 @@ def oxtalign_scores(names, ref, structure=None):
     (most molecules matched out of 15, then smallest RMSD_15 in Angstrom). `structure` maps a name to a Structure."""
     import warnings
 
+    import oxtalign  # noqa: F401  (fail loudly if it is not installed)
     import pandas as pd
 
     warnings.filterwarnings("ignore")

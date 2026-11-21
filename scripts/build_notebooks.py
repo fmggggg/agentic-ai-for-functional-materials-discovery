@@ -148,29 +148,33 @@ pd.DataFrame(res)'''),
     md("""
 ## 2.4 The full landscape (precomputed)
 
-About 220 random structures, relaxed beforehand. Matches to the experimental forms are marked.
+About 220 random structures, relaxed beforehand with the same settings. Stars: the two experimental forms,
+relaxed with MACE-OFF. Energies are relative to Form I.
 """),
-    code('''L = cu.load_landscape("landscape_random")
+    code('''from ase.io import read
+L = cu.load_landscape("landscape_random")
+e_gas = cu.gas_phase_energy()
+exp = {}
+for n in ("I", "II"):
+    at = read(cu.DATA / f"paracetamol_form_{n}_relaxed.extxyz")
+    exp[n] = (cu.density(at), cu.energy_per_molecule(at) - e_gas)
+E0 = exp["I"][1]
 fig, ax = plt.subplots(figsize=(6.5, 4.5))
-ax.scatter(L.density, L.rel_energy_kjmol, s=8, c="#BDBDBD", label="random search")
-for col, mk, lab in [("rms_form_I", "*", "matches Form I"), ("rms_form_II", "D", "matches Form II")]:
-    hit = L[L[col].notna()]
-    ax.scatter(hit.density, hit.rel_energy_kjmol, s=90, marker=mk, edgecolor="k", label=f"{lab} ({len(hit)})")
-ax.set_xlabel("density (g/cm$^3$)"); ax.set_ylabel("relative energy (kJ/mol)"); ax.set_ylim(-1, 40)
-ax.legend(); ax.set_title("Paracetamol CSP landscape (MACE-OFF)");'''),
-    code('''L = L.sort_values("rel_energy_kjmol").reset_index(drop=True)
-for col in ["rms_form_I", "rms_form_II"]:
-    idx = L.index[L[col].notna()]
-    print(col, "-> best rank:", (idx.min() + 1) if len(idx) else "not found",
-          "| E_rel =", round(L.loc[idx.min(), "rel_energy_kjmol"], 2) if len(idx) else "-")
-print("structures within 5 kJ/mol of the global minimum:", (L.rel_energy_kjmol < 5).sum())'''),
+ax.scatter(L.density, L.lattice_energy_kjmol - E0, s=10, c="#BDBDBD", label=f"random search ({len(L)})")
+for n, mk in [("I", "*"), ("II", "D")]:
+    ax.scatter(exp[n][0], exp[n][1] - E0, s=160, marker=mk, edgecolor="k", zorder=5, label=f"Form {n} (experiment, relaxed)")
+ax.set_xlabel("density (g/cm$^3$)"); ax.set_ylabel("energy relative to Form I (kJ/mol)"); ax.set_ylim(-2, 40)
+ax.legend(); ax.set_title("Paracetamol: random search vs experiment");'''),
+    code('''rel = (L.lattice_energy_kjmol - E0).sort_values()
+print("random structures matching Form I or II:", int(L.rms_form_I.notna().sum() + L.rms_form_II.notna().sum()), "of", len(L))
+print("lowest random structure:", round(rel.iloc[0], 1), "kJ/mol above Form I")
+print("random structures within 5 kJ/mol of Form I:", (rel < 5).sum())'''),
     md("""
-> **Question 4.** Are the experimental forms at the bottom? How many other structures are within 5 kJ/mol?
+> **Question 4.** Did the random search find Form I or Form II? Its best structure is less than 1 kJ/mol above Form I
+> but is a different packing. What does that tell you about ranking?
 >
-> **Question 5.** What fraction of the random structures ended up as Form I?
+> **Question 5.** Roughly how many random trials would you need to find Form I? Keep the answer for Part 3.
 """),
-    code('''for col in ["rms_form_I", "rms_form_II"]:
-    print(col, f"hit rate = {L[col].notna().mean()*100:.2f} %")'''),
 ]
 
 # ---------------------------------------------------------------------------
@@ -196,7 +200,7 @@ pd.DataFrame({r: {"Z": int(round(len(s) / 46)), "density (g/cm3)": round(s.densi
 > Why would anyone want it?
 """),
     md("""
-## 3.2 Score the raw samples (~40 s)
+## 3.2 Score the raw samples (~1 min)
 
 The samples come straight from the model, with no relaxation. OXtalign overlays a cluster of 15 molecules
 from each sample on the reference and reports how many molecules match and their RMSD.
@@ -212,7 +216,7 @@ S.head(8)"""),
     md("""
 > **Question 7.** Some samples already match γ before any relaxation. Do we need to relax all 100 to find them?
 """),
-    md("## 3.3 Relax the best three (~1 min)"),
+    md("## 3.3 Relax the best three (~2 min)"),
     code("""E = cu.t2_endpoints().set_index("name")
 fmt = lambda res: f"{res[1]}/15, {res[0]:.2f} Å"
 rows = []
@@ -342,7 +346,7 @@ for r in cu.T2_REFS:
 plt.xlabel("density before relaxation (g/cm$^3$)"); plt.legend(fontsize=8);"""),
     code("""cu.show(gen[2][0][0], supercell=(2, 2, 2))"""),
     md("""
-## 4.4 Relax one (~15 s)
+## 4.4 Relax one (~45 s)
 
 The same Sobol point gives the same structure everywhere, so we can look up how this one ended in the full run.
 """),
@@ -372,7 +376,7 @@ if HAVE_RUN:
     CS = cu.molcspy_clari_scores()
     table = {who: {**{"relaxed and converged": len(d)},
                    **{f"{r}: 15/15": int((s[f"n_matched_{r}"] == 15).sum()) for r in cu.T2_REFS},
-                   "lowest E (kJ/mol)": round(d.rel_energy_kjmol.min(), 1)}
+                   "lowest E (kJ/mol)": f"{d.rel_energy_kjmol.min():.1f}"}
              for who, d, s in [("Clari-H", C, CS), ("mol-CSPy", M, M)]}
     display(pd.DataFrame(table, dtype=object))
 else:

@@ -551,3 +551,27 @@ def molcspy_structure(name):
     if _MCZIP is None:
         _MCZIP = zipfile.ZipFile(T2_MOLCSPY / "relaxed_cifs.zip")
     return Structure.from_str(_MCZIP.read(name + ".cif").decode(), fmt="cif")
+
+
+# ----------------------------------------------------------------------------- paracetamol, Clari-H (notebook 02)
+PARA_CLARI = DATA / "paracetamol_clari_h"
+_PCZIP = None
+
+
+def para_clari_table():
+    """100 Clari-H samples of paracetamol: raw density, relaxed density and energy relative to Form I."""
+    import pandas as pd
+
+    return pd.read_csv(PARA_CLARI / "samples.csv")
+
+
+def para_clari_structure(name):
+    """A Clari-H paracetamol sample exactly as generated, as a pymatgen Structure."""
+    import zipfile
+
+    from pymatgen.core import Structure
+
+    global _PCZIP
+    if _PCZIP is None:
+        _PCZIP = zipfile.ZipFile(PARA_CLARI / "raw_samples.zip")
+    return Structure.from_str(_PCZIP.read(name + ".cif").decode(), fmt="cif")

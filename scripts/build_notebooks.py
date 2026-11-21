@@ -103,7 +103,7 @@ pd.DataFrame(rows)'''),
 # ---------------------------------------------------------------------------
 nb2 = [
     md("""
-# Part 2 · A mini crystal structure prediction  (~9 min)
+# Part 2 · A mini crystal structure prediction  (~11 min)
 
 Generate trial packings, relax each one, rank by energy. We start from the paracetamol molecule only and look for
 Form I and Form II. Packings come from [PyXtal](https://github.com/MaterSim/PyXtal), energies from MACE-OFF.
@@ -174,6 +174,41 @@ print("random structures within 5 kJ/mol of Form I:", (rel < 5).sum())'''),
 > but is a different packing. What does that tell you about ranking?
 >
 > **Question 5.** Roughly how many random trials would you need to find Form I? Keep the answer for Part 3.
+"""),
+    md("""
+## 2.5 Same molecule, a generative model (~1 min)
+
+100 crystal structures of paracetamol sampled from Clari-H (Z = 4 or 8), taken straight from the model.
+We score them against both forms with OXtalign: a cluster of 15 molecules is overlaid on the reference
+and the matching molecules are counted. Clari was trained on the CSD, which contains both forms.
+"""),
+    code('''P = cu.para_clari_table()
+forms = {n: cu.to_pmg(cu.load_cif(cu.DATA / f"paracetamol_form_{n}.cif")) for n in ("I", "II")}
+t0 = time.time()
+for n, ref in forms.items():
+    S = cu.oxtalign_scores(P.name, ref, structure=cu.para_clari_structure)
+    P[f"form {n} (of 15)"] = P.name.map(S.set_index("sample")["molecules matched (of 15)"])
+print(f"scored in {time.time() - t0:.0f} s")
+print("match Form I (15/15):", (P["form I (of 15)"] == 15).sum(), "| match Form II:", (P["form II (of 15)"] == 15).sum())
+P.sort_values(["form I (of 15)", "form II (of 15)"], ascending=False).head(5)'''),
+    code('''best = P.sort_values("form I (of 15)", ascending=False).name.iloc[0]
+raw = cu.para_clari_structure(best)
+t0 = time.time()
+r = cu.relax(cu.to_ase(raw), fmax=0.05, steps=100, symmetry=False)
+print(best, f"relaxed in {time.time() - t0:.0f} s")
+print("vs Form I before:", cu.compack_like(forms["I"], raw)[:2], " after:", cu.compack_like(forms["I"], cu.to_pmg(r))[:2])
+print("energy relative to Form I:", round(cu.energy_per_molecule(r) - e_gas - E0, 1), "kJ/mol")'''),
+    code('''C = P[P.intact]
+fig, ax = plt.subplots(figsize=(6.5, 4.5))
+ax.scatter(L.density, L.lattice_energy_kjmol - E0, s=10, c="#BDBDBD", label=f"random search ({len(L)})")
+ax.scatter(C.density, C.rel_energy_kjmol, s=14, c="#893F0D", alpha=.8, label=f"Clari-H, relaxed ({len(C)})")
+for n, mk in [("I", "*"), ("II", "D")]:
+    ax.scatter(exp[n][0], exp[n][1] - E0, s=160, marker=mk, c="#E0A526", edgecolor="k", zorder=5, label=f"Form {n}")
+ax.set_xlabel("density (g/cm$^3$)"); ax.set_ylabel("energy relative to Form I (kJ/mol)"); ax.set_ylim(-2, 40)
+ax.legend(fontsize=8);'''),
+    md("""
+> **Question 5b.** Compare the two searches: how many structures, how many hits, and where do most samples end up on the map?
+> Is a hit by a model that has seen the CSD a fair test? How would you make it fair?
 """),
 ]
 

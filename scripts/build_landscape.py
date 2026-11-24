@@ -22,6 +22,7 @@ import csp_utils as cu  # noqa: E402
 # (space group number, Z, share of the budget) – common organic space groups, Z' = 1
 PLAN = {14: (4, 0.36), 61: (8, 0.22), 2: (2, 0.12), 19: (4, 0.14), 4: (2, 0.08), 15: (8, 0.08)}
 PARTS = cu.DATA / "_landscape_parts"
+N_KEEP = 200  # the run stopped after 219 jobs; ship the first 200 intact structures in run order
 
 _MOL = None
 
@@ -75,6 +76,10 @@ def collect():
                          seconds=i["seconds"], intact=len(cu.find_molecules(at)) == i["Z"],
                          rms_form_I=cu.same_structure(at, refs["I"]), rms_form_II=cu.same_structure(at, refs["II"])))
     df = pd.DataFrame(rows)
+    order = sorted(df[df.intact].id, key=lambda k: (k % 50, k))[:N_KEEP]  # same order as the run
+    keep = df.id.isin(order).values
+    df = df[keep].reset_index(drop=True)
+    structs = [s_ for s_, ok in zip(structs, keep) if ok]
     df["lattice_energy_kjmol"] = df.energy_kjmol - ref.e_gas_kjmol.iloc[0]
     emin = min(df[df.intact].energy_kjmol.min(), ref.energy_kjmol.min())
     df["rel_energy_kjmol"] = df.energy_kjmol - emin

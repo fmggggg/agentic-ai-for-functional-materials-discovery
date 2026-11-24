@@ -75,6 +75,7 @@ cu.show(form1, supercell=(2, 2, 1))'''),
     code('''table = pd.DataFrame([cu.describe(form1, name="Form I"), cu.describe(form2, name="Form II")]).set_index("name").T
 table'''),
     code('''pd.DataFrame(cu.hydrogen_bonds(form1)).query("intermolecular")'''),
+    md("> **Question.** Which form is denser? Form I is the stable one. Does paracetamol follow the density rule?"),
     md("""
 ## 1.3 Which form is lower in energy?
 
@@ -97,7 +98,9 @@ pd.DataFrame(rows)'''),
     md("""
 ## 1.4 Squeeze the crystal
 
-Make the cell smaller or bigger and keep every molecule rigid. Each new slider position is one MACE-OFF calculation.
+Why does each form have the density it has? It sits at the bottom of an energy well: push the molecules closer
+and they clash, pull them apart and they lose their contacts. Make the cell smaller or bigger, keep every molecule
+rigid, and watch the energy. Each new slider position is one MACE-OFF calculation.
 """),
     code('''from ipywidgets import interact, FloatSlider
 
@@ -121,6 +124,7 @@ def squeeze(scale):
     ax.set_xlabel("density (g/cm$^3$)"); ax.set_ylabel("E_latt (kJ/mol)"); ax.legend()
     cu.draw_cell(cu.squeeze(relaxed["I"], scale), ax2, title=f"Form I, cell × {scale:.2f}", limits=LIM)
     plt.show()'''),
+        md("> **Question.** Why does the energy go up so much faster when you squeeze than when you stretch?"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -177,6 +181,7 @@ fig, axs = plt.subplots(1, 2, figsize=(10, 4.5))
 lim = cu.draw_cell(before, axs[0], title=f"before: {cu.density(before):.2f} g/cm$^3$")
 cu.draw_cell(after, axs[1], title=f"after 100 steps: {cu.density(after):.2f} g/cm$^3$", limits=lim)
 plt.show()'''),
+    md("> **Question.** How long did one relaxation take? A real CSP study relaxes 10⁴–10⁵ structures per molecule. How long would that take?"),
     md("""
 ## 2.4 200 random structures, run beforehand
 
@@ -236,6 +241,7 @@ for n, mk, sz in [("I", "*", 200), ("II", "D", 60)]:
     ax.scatter(exp[n][0], exp[n][1] - E0, s=sz, marker=mk, c="#E0A526", edgecolor="k", zorder=5, label=f"Form {n}")
 ax.set_xlabel("density (g/cm$^3$)"); ax.set_ylabel("energy relative to Form I (kJ/mol)"); ax.set_ylim(-2, 40)
 ax.legend(fontsize=8);'''),
+    md("> **Question.** Clari-H found Form I among 100 samples. Is that a fair test for a model trained on the CSD, which contains paracetamol?"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -256,6 +262,7 @@ ref_e = pd.read_csv(cu.T2 / "references.csv").set_index("reference")
 pd.DataFrame({r: {"Z": int(round(len(s) / 46)), "density (g/cm3)": round(s.density, 3),
                   "E in 2017 study (kJ/mol)": ref_e.loc[r, "original_csp_energy_kjmol"]} for r, s in refs.items()}).T"""),
     code("""cu.show(cu.to_ase(refs["gamma"]), supercell=(2, 2, 2))   # gamma, looking down the channels"""),
+    md("> **Question.** γ has less than a third of the density of the global minimum and is about 60 kJ/mol higher in energy. Why would anyone want it?"),
     md("""
 ## 3.2 Score the raw samples (~1 min)
 
@@ -270,6 +277,7 @@ S = cu.oxtalign_scores(names, refs[REF])
 print(f"{len(names)} samples scored against {REF} in {time.time() - t0:.0f} s;",
       (S["molecules matched (of 15)"] == 15).sum(), "match all 15 molecules")
 S.head(8)"""),
+    md("> **Question.** Some samples already match γ before any relaxation. Do we still need to relax all 100?"),
     md("## 3.3 Relax the best three (~2 min)"),
     code("""E = cu.t2_endpoints().set_index("name")
 fmt = lambda res: f"{res[1]}/15, {res[0]:.2f} Å"
@@ -349,6 +357,7 @@ def compare(n):
     for ax, pts, t in [(axs[0], pseudo, "random"), (axs[1], sobol, "Sobol")]:
         ax.scatter(*pts.T, s=8, c="#893F0D"); ax.set_title(t); ax.set_aspect("equal"); ax.set_xticks([]); ax.set_yticks([])
     plt.show()"""),
+    md("> **Question.** Sobol or random: which one leaves gaps, and why does that matter when you can afford only a few thousand trials?"),
     md("## 4.3 Generate T2 crystals"),
     code("""import time
 gen = {}
@@ -392,6 +401,7 @@ def show_step(step):
     _, ax = plt.subplots(figsize=(7, 7))
     cu.draw_cell(frames[step][1], ax, supercell=(3, 3, 3), title=f"step {step}: {cu.density(frames[step][1]):.3f} g/cm$^3$", limits=lim)
     plt.show()"""),
+    md("> **Question.** A mol-CSPy structure is far from a real crystal before relaxation. What does that mean for the cost of a classical search?"),
     md("## 4.5 100 mol-CSPy structures vs 100 Clari-H samples"),
     code("""C = cu.t2_endpoints(); C = C[C.converged]
 if HAVE_RUN:
@@ -409,6 +419,7 @@ if HAVE_RUN:
     display(pd.DataFrame(table, dtype=object))
 else:
     print("data/t2_molcspy/ is missing")"""),
+    md("> **Question.** Give one advantage of each method. What would you change in mol-CSPy to find γ?"),
     md("""
 ---
 mol-CSPy: gitlab.com/mol-cspy/mol-cspy · Case *et al.*, *J. Chem. Theory Comput.* **12**, 910 (2016) ·

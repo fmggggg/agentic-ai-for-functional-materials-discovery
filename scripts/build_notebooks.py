@@ -105,7 +105,7 @@ curve = {"I": {}, "II": {}}
 big = cu.squeeze(relaxed["I"], 1.25)
 _, frame = plt.subplots(); LIM = cu.draw_cell(big, frame); plt.close()
 
-@interact(scale=FloatSlider(value=1.0, min=0.88, max=1.25, step=0.01, continuous_update=False, description="cell scale"))
+@interact(scale=FloatSlider(value=1.0, min=0.95, max=1.25, step=0.01, continuous_update=False, description="cell scale"))
 def squeeze(scale):
     scale = round(scale, 2)
     for n, at in relaxed.items():
@@ -193,28 +193,14 @@ for n in ("I", "II"):
 E0 = exp["I"][1]
 fig, ax = plt.subplots(figsize=(6.5, 4.5))
 ax.scatter(L.density, L.lattice_energy_kjmol - E0, s=10, c="#BDBDBD", label=f"random search ({len(L)})")
-for n, mk in [("I", "*"), ("II", "D")]:
-    ax.scatter(exp[n][0], exp[n][1] - E0, s=160, marker=mk, edgecolor="k", zorder=5, label=f"Form {n} (experiment, relaxed)")
+for n, mk, sz in [("I", "*", 200), ("II", "D", 60)]:
+    ax.scatter(exp[n][0], exp[n][1] - E0, s=sz, marker=mk, edgecolor="k", zorder=5, label=f"Form {n} (experiment, relaxed)")
 ax.set_xlabel("density (g/cm$^3$)"); ax.set_ylabel("energy relative to Form I (kJ/mol)"); ax.set_ylim(-2, 40)
 ax.legend(); ax.set_title("Paracetamol: random search vs experiment");'''),
     code('''rel = (L.lattice_energy_kjmol - E0).sort_values()
 print("random structures matching Form I or II:", int(L.rms_form_I.notna().sum() + L.rms_form_II.notna().sum()), "of", len(L))
 print("lowest random structure:", round(rel.iloc[0], 1), "kJ/mol above Form I")
 print("random structures within 5 kJ/mol of Form I:", (rel < 5).sum())'''),
-    md("How lucky were we? Pretend you had run only N of the 200 structures. Change `draw` for another set."),
-    code('''@interact(N=IntSlider(value=20, min=10, max=200, step=10, continuous_update=False),
-          draw=IntSlider(value=0, min=0, max=9))
-def subsample(N, draw):
-    sub = L.sample(N, random_state=draw)
-    e = sub.lattice_energy_kjmol - E0
-    fig, ax = plt.subplots(figsize=(6.5, 4.5))
-    ax.scatter(L.density, L.lattice_energy_kjmol - E0, s=10, c="#E6E6E6")
-    ax.scatter(sub.density, e, s=14, c="#893F0D", label=f"{N} trials")
-    for n, mk in [("I", "*"), ("II", "D")]:
-        ax.scatter(exp[n][0], exp[n][1] - E0, s=160, marker=mk, edgecolor="k", zorder=5, label=f"Form {n}")
-    ax.set_xlabel("density (g/cm$^3$)"); ax.set_ylabel("energy relative to Form I (kJ/mol)"); ax.set_ylim(-2, 40)
-    ax.set_title(f"best of {N}: {e.min():.1f} kJ/mol above Form I"); ax.legend(fontsize=8)
-    plt.show()'''),
     md("""
 ## 2.5 Same molecule, a generative model (~1 min)
 
@@ -235,15 +221,19 @@ P.sort_values(["form I (of 15)", "form II (of 15)"], ascending=False).head(5)'''
 raw = cu.para_clari_structure(best)
 t0 = time.time()
 r = cu.relax(cu.to_ase(raw), fmax=0.05, steps=100, symmetry=False)
-print(best, f"relaxed in {time.time() - t0:.0f} s")
-print("vs Form I before:", cu.compack_like(forms["I"], raw)[:2], " after:", cu.compack_like(forms["I"], cu.to_pmg(r))[:2])
-print("energy relative to Form I:", round(cu.energy_per_molecule(r) - e_gas - E0, 1), "kJ/mol")'''),
+print(best, f"relaxed in {time.time() - t0:.0f} s;",
+      "energy relative to Form I:", round(cu.energy_per_molecule(r) - e_gas - E0, 1), "kJ/mol")
+fig, axs = plt.subplots(1, 2, figsize=(11, 5))
+cu.draw_overlay(forms["I"], raw, axs[0], title="straight from Clari-H")
+cu.draw_overlay(forms["I"], cu.to_pmg(r), axs[1], title="after relaxation")
+fig.suptitle("grey: Form I (experiment)   brown: the Clari-H sample")
+plt.show()'''),
     code('''C = P[P.intact]
 fig, ax = plt.subplots(figsize=(6.5, 4.5))
 ax.scatter(L.density, L.lattice_energy_kjmol - E0, s=10, c="#BDBDBD", label=f"random search ({len(L)})")
 ax.scatter(C.density, C.rel_energy_kjmol, s=14, c="#893F0D", alpha=.8, label=f"Clari-H, relaxed ({len(C)})")
-for n, mk in [("I", "*"), ("II", "D")]:
-    ax.scatter(exp[n][0], exp[n][1] - E0, s=160, marker=mk, c="#E0A526", edgecolor="k", zorder=5, label=f"Form {n}")
+for n, mk, sz in [("I", "*", 200), ("II", "D", 60)]:
+    ax.scatter(exp[n][0], exp[n][1] - E0, s=sz, marker=mk, c="#E0A526", edgecolor="k", zorder=5, label=f"Form {n}")
 ax.set_xlabel("density (g/cm$^3$)"); ax.set_ylabel("energy relative to Form I (kJ/mol)"); ax.set_ylim(-2, 40)
 ax.legend(fontsize=8);'''),
 ]
@@ -280,24 +270,15 @@ S = cu.oxtalign_scores(names, refs[REF])
 print(f"{len(names)} samples scored against {REF} in {time.time() - t0:.0f} s;",
       (S["molecules matched (of 15)"] == 15).sum(), "match all 15 molecules")
 S.head(8)"""),
-    md("How many samples do you really need? Draw K of the 100 samples many times and count how often at least one matches."),
-    code("""from ipywidgets import interact, IntSlider, FloatLogSlider
-
-hit15 = (S["molecules matched (of 15)"] == 15).to_numpy()
-rng = np.random.default_rng(0)
-
-@interact(K=IntSlider(value=10, min=1, max=100, continuous_update=False))
-def budget(K):
-    found = np.mean([rng.choice(hit15, K, replace=False).any() for _ in range(2000)])
-    print(f"with {K} samples you find {REF} {found:.0%} of the time")"""),
     md("## 3.3 Relax the best three (~2 min)"),
     code("""E = cu.t2_endpoints().set_index("name")
 fmt = lambda res: f"{res[1]}/15, {res[0]:.2f} Å"
-rows = []
+rows, done = [], {}
 for name in S["sample"][:3]:
     raw = cu.t2_raw_structure(name)
     t0 = time.time()
     relaxed = cu.relax(cu.to_ase(raw), fmax=0.1, steps=60, symmetry=False)
+    done[name] = (raw, cu.to_pmg(relaxed))
     n_mol = len(relaxed) // 46
     row = {"sample": name, "raw": fmt(cu.compack_like(refs[REF], raw)),
            "60 steps here": fmt(cu.compack_like(refs[REF], cu.to_pmg(relaxed))), "seconds": round(time.time() - t0),
@@ -307,6 +288,12 @@ for name in S["sample"][:3]:
         row["E, full (kJ/mol)"] = round(E.loc[name, "rel_energy_kjmol"], 1)
     rows.append(row)
 pd.DataFrame(rows, dtype=object)"""),
+    code("""raw, relaxed = done[S["sample"][0]]
+fig, axs = plt.subplots(1, 2, figsize=(11, 5))
+cu.draw_overlay(refs[REF], raw, axs[0], title="straight from Clari-H")
+cu.draw_overlay(refs[REF], relaxed, axs[1], title="after 60 steps")
+fig.suptitle(f"grey: {REF} (reference)   brown: the best sample")
+plt.show()"""),
     md("""
 ## 3.4 All 100 samples on an energy–density map
 
@@ -327,55 +314,8 @@ for r, s in refs.items():
 ax.set_ylim(-5, 130); ax.set_xlabel("density (g/cm$^3$)"); ax.set_ylabel("relative MACE-OFF energy (kJ/mol per T2)")
 ax.legend(fontsize=8);"""),
     md("""
-## 3.5 Is it the same crystal?
-
-pymatgen `StructureMatcher` compares unit cells and gives a normalised RMSD (not Å). OXtalign compares clusters of
-15 molecules, like CCDC COMPACK. AMD fingerprints need no alignment and are fast enough to deduplicate.
-"""),
-    code("""best = S["sample"][0]
-s = cu.t2_structure(best)
-print("pymatgen RMSD (normalised):", cu.pymatgen_rmsd(s, refs[REF]))
-print("OXtalign (RMSD15 in Å, matched, status):", cu.compack_like(refs[REF], s))
-
-G = [n for n in C.name[hit]]                  # relaxed γ-like samples
-fps = [cu.amd_fingerprint(cu.t2_structure(n), k=100) for n in G]
-for tol in (0.01, 0.05, 0.1):
-    print(f"AMD tolerance {tol} Å: {len(set(cu.group_duplicates(fps, tol)))} distinct structures among {len(G)}")"""),
-    md("""
-Now choose both thresholds yourself: how many of the 15 molecules must match before you call a sample γ,
-and how close two AMD fingerprints must be before you call them the same structure.
-"""),
-    code("""fp = {n: cu.amd_fingerprint(cu.t2_structure(n), k=100) for n in C.name}
-
-@interact(matched=IntSlider(value=15, min=8, max=15, continuous_update=False, description="matched ≥"),
-          tol=FloatLogSlider(value=0.05, base=10, min=-2.5, max=-0.5, step=0.1, continuous_update=False, description="AMD tol (Å)"))
-def count(matched, tol):
-    ok = set(S.loc[S["molecules matched (of 15)"] >= matched, "sample"])
-    hits = [n for n in C.name if n in ok]
-    distinct = len(set(cu.group_duplicates([fp[n] for n in hits], tol))) if hits else 0
-    print(f"{len(hits)} relaxed samples count as {REF}, {distinct} distinct structures among them")"""),
-    md("""
-## 3.6 (Optional) Run Clari yourself
-
-Needs a GPU: `Runtime → Change runtime type → T4 GPU`, then set `RUN_CLARI = True`. The weights are downloaded on first use (0.3–1.4 GB).
-"""),
-    code("""RUN_CLARI = False
-SMILES = "CC(=O)Nc1ccc(O)cc1"   # paracetamol
-if RUN_CLARI:
-    !pip -q install clari
-    from clari.inference import ClariSampler
-    crystals = ClariSampler("clari-m").sample(SMILES, id="my_molecule", samples=8, copies=4)
-    form1 = cu.to_pmg(cu.load_cif(cu.DATA / "paracetamol_form_I.cif"))
-    res = [cu.compack_like(form1, cu.to_pmg(c.to_ase())) for c in crystals]
-    display(pd.DataFrame(res, columns=["RMSD15 (Å)", "matched", "status"]))
-    best = max(range(len(res)), key=lambda i: (res[i][1], -(res[i][0] or 9)))
-    r = cu.relax(crystals[best].to_ase(), fmax=0.1, steps=100, symmetry=False)
-    print("best sample after relaxation vs form I:", cu.compack_like(form1, cu.to_pmg(r)))
-    cu.show(r, supercell=(2, 2, 2))"""),
-    md("""
 ---
-Further reading: Pulido *et al.*, *Nature* **543**, 657 (2017) · OXtalign: github.com/OXtal/oxtalign ·
-AMD: `pip install average-minimum-distance`
+Further reading: Pulido *et al.*, *Nature* **543**, 657 (2017) · OXtalign: github.com/OXtal/oxtalign
 """),
 ]
 
@@ -396,13 +336,15 @@ HAVE_RUN = (cu.T2_MOLCSPY / "endpoints.csv").exists()   # 100 structures relaxed
 ## 4.2 Sobol vs random numbers
 
 Each trial structure is set by up to 12 numbers (cell, position, orientation). Here are two of them; change the number of points.
+We use scrambled Sobol points, which keep the even coverage without the regular grid pattern.
 """),
     code("""from ipywidgets import interact, IntSlider, SelectionSlider
+from scipy.stats import qmc
 
 @interact(n=SelectionSlider(options=[16, 32, 64, 128, 256, 512, 1024], value=256, description="points"))
 def compare(n):
     pseudo = np.random.default_rng(0).random((n, 2))
-    sobol = np.array([cu._sobol_vector(i, 2) for i in range(1, n + 1)])
+    sobol = qmc.Sobol(2, scramble=True, seed=0).random_base2(int(np.log2(n)))
     fig, axs = plt.subplots(1, 2, figsize=(8, 4))
     for ax, pts, t in [(axs[0], pseudo, "random"), (axs[1], sobol, "Sobol")]:
         ax.scatter(*pts.T, s=8, c="#893F0D"); ax.set_title(t); ax.set_aspect("equal"); ax.set_xticks([]); ax.set_yticks([])
@@ -441,14 +383,14 @@ if HAVE_RUN:
     md("Step through the relaxation and watch the cell close up and the energy fall."),
     code("""n_mol = len(r) // 46
 e = [E * cu.EV_TO_KJMOL / n_mol - cu.T2_E0_KJMOL for E, _ in frames]
-_, ax = plt.subplots(); lim = cu.draw_cell(frames[0][1], ax, supercell=(1, 1, 1)); plt.close()
+_, ax = plt.subplots(); lim = cu.draw_cell(frames[0][1], ax, supercell=(3, 3, 3)); plt.close()
 
 @interact(step=IntSlider(value=0, min=0, max=len(frames) - 1, continuous_update=False))
 def show_step(step):
     plt.figure(figsize=(5, 3)); plt.plot(e, c="#C9A27E"); plt.plot(step, e[step], "o", c="#893F0D")
     plt.xlabel("optimisation step"); plt.ylabel("E (kJ/mol per T2)"); plt.show()
-    _, ax = plt.subplots(figsize=(5, 5))
-    cu.draw_cell(frames[step][1], ax, supercell=(1, 1, 1), title=f"step {step}: {cu.density(frames[step][1]):.3f} g/cm$^3$", limits=lim)
+    _, ax = plt.subplots(figsize=(7, 7))
+    cu.draw_cell(frames[step][1], ax, supercell=(3, 3, 3), title=f"step {step}: {cu.density(frames[step][1]):.3f} g/cm$^3$", limits=lim)
     plt.show()"""),
     md("## 4.5 100 mol-CSPy structures vs 100 Clari-H samples"),
     code("""C = cu.t2_endpoints(); C = C[C.converged]

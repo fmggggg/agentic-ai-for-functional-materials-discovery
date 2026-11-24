@@ -477,6 +477,30 @@ def compack_like(a, b, n=15):
     return r.rmsd_n, r.n_matched, r.status
 
 
+def draw_overlay(ref, sample, ax=None, title=None):
+    """OXtalign overlay of two crystals: the 15-molecule cluster of `ref` in grey, `sample` laid on top in colour."""
+    import matplotlib.pyplot as plt
+    import oxtalign
+    from oxtalign.overlay import build_overlay
+
+    ax = ax or plt.gca()
+    o = build_overlay(oxtalign.from_pymatgen(ref), oxtalign.from_pymatgen(sample))
+    mols = o["molecules"]
+    allA = np.vstack([m["coords"] for m in mols if m["role"] == "A"])
+    _, _, vt = np.linalg.svd(allA - allA.mean(0))   # look along the middle axis of the cluster
+    for m in mols:
+        xy = (np.array(m["coords"]) - allA.mean(0)) @ vt[[0, 2]].T
+        ref_mol = m["role"] == "A"
+        for i, j in m["bonds"]:
+            ax.plot(xy[[i, j], 0], xy[[i, j], 1], c="#BDBDBD" if ref_mol else "#893F0D",
+                    lw=4 if ref_mol else 1.3, solid_capstyle="round", zorder=1 if ref_mol else 2)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    rmsd = "" if o["rmsd_n"] is None else f", RMSD {o['rmsd_n']:.2f} Å"
+    head = f"{title}: " if title else ""
+    ax.set_title(f"{head}{o['n_matched']}/15 molecules match{rmsd}")
+
+
 def amd_fingerprint(structure, k=100):
     """Average Minimum Distance vector (Widdowson & Kurlin): k sorted neighbour distances averaged over atoms."""
     import amd

@@ -142,6 +142,43 @@ def show(atoms, supercell=(2, 2, 2), width=520, height=380, style="stick"):
 
 # ----------------------------------------------------------------------------
 # Energies (MACE-OFF machine-learned force field, runs on CPU)
+def draw_cell(atoms, ax=None, axis=1, supercell=(2, 1, 2), title=None, limits=None):
+    """Flat stick drawing of a crystal looking down one cell axis, with the unit cell outlined.
+    A static picture, so it also works inside sliders. Returns the axis limits, to reuse for another drawing."""
+    import matplotlib.pyplot as plt
+    from ase.data import covalent_radii
+
+    ax = ax or plt.gca()
+    big = atoms.repeat(supercell)
+    groups, pos = unwrap_molecules(big)
+    z = big.numbers
+    cell = atoms.cell[:]
+    v = cell[axis] / np.linalg.norm(cell[axis])
+    u = cell[(axis + 1) % 3] - (cell[(axis + 1) % 3] @ v) * v
+    u /= np.linalg.norm(u)
+    w = np.cross(v, u)
+    xy = lambda p: (p @ u, p @ w)
+    colour = {1: "#D0D0D0", 6: "#555555", 7: "#3050F8", 8: "#E8331F"}
+    for g in groups:
+        for i in g:
+            for j in g:
+                if j > i and np.linalg.norm(pos[i] - pos[j]) < 1.15 * (covalent_radii[z[i]] + covalent_radii[z[j]]):
+                    m = (pos[i] + pos[j]) / 2
+                    for k, end in ((i, m), (j, m)):
+                        (x0, y0), (x1, y1) = xy(pos[k]), xy(end)
+                        ax.plot([x0, x1], [y0, y1], c=colour.get(z[k], "#999999"), lw=1.6 if z[k] > 1 else 0.8)
+    a, b = cell[(axis + 1) % 3], cell[(axis + 2) % 3]
+    box = np.array([xy(p) for p in (0 * a, a, a + b, b, 0 * a)])
+    ax.plot(box[:, 0], box[:, 1], c="#893F0D", lw=1.5)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    if limits:
+        ax.set_xlim(limits[0]); ax.set_ylim(limits[1])
+    if title:
+        ax.set_title(title)
+    return ax.get_xlim(), ax.get_ylim()
+
+
 # ----------------------------------------------------------------------------
 _CALC = None
 

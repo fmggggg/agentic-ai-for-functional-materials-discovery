@@ -14,9 +14,12 @@ REPO = "{REPO}"
 if "google.colab" in sys.modules:
     if not os.path.exists("/content/csp-tutorial"):
         !git clone -q {{REPO}} /content/csp-tutorial
+    else:
+        !git -C /content/csp-tutorial pull -q
     %cd /content/csp-tutorial
     !pip -q install pyxtal mace-torch py3Dmol pymatgen rdkit EXTRA "requests==2.32.4"
-import csp_utils as cu
+import importlib, csp_utils as cu
+importlib.reload(cu)   # picks up a fresh copy if Setup is run again
 import numpy as np, pandas as pd, matplotlib.pyplot as plt
 plt.rcParams.update({{"figure.dpi": 110, "font.size": 11}})
 print("ready")'''

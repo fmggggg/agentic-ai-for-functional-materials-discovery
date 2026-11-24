@@ -170,8 +170,9 @@ def energy_per_molecule(atoms, n_mol=None):
     return at.get_potential_energy() * EV_TO_KJMOL / n_mol
 
 
-def relax(atoms, fmax=0.05, steps=150, cell=True, symmetry=True, log=False):
-    """Relax positions (and cell) with MACE-OFF, keeping the space group. Returns a new Atoms."""
+def relax(atoms, fmax=0.05, steps=150, cell=True, symmetry=True, log=False, frames=None):
+    """Relax positions (and cell) with MACE-OFF, keeping the space group. Returns a new Atoms.
+    Pass a list as `frames` to keep (energy in eV, structure) after every step."""
     from ase.constraints import FixSymmetry
     from ase.filters import FrechetCellFilter
     from ase.optimize import LBFGS
@@ -181,7 +182,14 @@ def relax(atoms, fmax=0.05, steps=150, cell=True, symmetry=True, log=False):
         at.set_constraint(FixSymmetry(at, symprec=0.01))
     at.calc = get_calculator()
     obj = FrechetCellFilter(at) if cell else at
-    LBFGS(obj, logfile="-" if log else None).run(fmax=fmax, steps=steps)
+    opt = LBFGS(obj, logfile="-" if log else None)
+    if frames is not None:
+        def keep():
+            snap = at.copy()
+            snap.set_constraint()
+            frames.append((at.get_potential_energy(), snap))
+        opt.attach(keep)
+    opt.run(fmax=fmax, steps=steps)
     at.set_constraint()
     return at.copy()  # plain Atoms, no calculator attached
 
@@ -231,6 +239,18 @@ def unwrap_molecules(atoms, scale=1.15):
                     grp.append(b)
         groups.append(np.array(sorted(grp)))
     return groups, pos
+
+
+def squeeze(atoms, scale):
+    """Scale the cell by `scale` along every axis and move whole molecules with it, without deforming them."""
+    groups, pos = unwrap_molecules(atoms)
+    for g in groups:
+        pos[g] += (scale - 1) * pos[g].mean(0)
+    new = atoms.copy()
+    new.set_cell(atoms.cell[:] * scale, scale_atoms=False)
+    new.positions = pos
+    new.wrap()
+    return new
 
 
 def molecule_from_crystal(atoms):

@@ -13,3 +13,4 @@ jupyterlab
 oxtalign
 average-minimum-distance
 toml
+ipywidgets

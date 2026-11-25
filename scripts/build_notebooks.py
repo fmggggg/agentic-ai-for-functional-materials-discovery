@@ -392,14 +392,14 @@ if HAVE_RUN:
     md("Step through the relaxation and watch the cell close up and the energy fall."),
     code("""n_mol = len(r) // 46
 e = [E * cu.EV_TO_KJMOL / n_mol - cu.T2_E0_KJMOL for E, _ in frames]
-_, ax = plt.subplots(); lim = cu.draw_cell(frames[0][1], ax, supercell=(3, 3, 3)); plt.close()
+_, ax = plt.subplots(); lim = cu.draw_cell(frames[0][1], ax, supercell=(1, 1, 1)); plt.close()
 
 @interact(step=IntSlider(value=0, min=0, max=len(frames) - 1, continuous_update=False))
 def show_step(step):
     plt.figure(figsize=(5, 3)); plt.plot(e, c="#C9A27E"); plt.plot(step, e[step], "o", c="#893F0D")
     plt.xlabel("optimisation step"); plt.ylabel("E (kJ/mol per T2)"); plt.show()
-    _, ax = plt.subplots(figsize=(7, 7))
-    cu.draw_cell(frames[step][1], ax, supercell=(3, 3, 3), title=f"step {step}: {cu.density(frames[step][1]):.3f} g/cm$^3$", limits=lim)
+    _, ax = plt.subplots(figsize=(5, 5))
+    cu.draw_cell(frames[step][1], ax, supercell=(1, 1, 1), title=f"step {step}: {cu.density(frames[step][1]):.3f} g/cm$^3$", limits=lim)
     plt.show()"""),
     md("> **Question.** A mol-CSPy structure is far from a real crystal before relaxation. What does that mean for the cost of a classical search?"),
     md("## 4.5 100 mol-CSPy structures vs 100 Clari-H samples"),
@@ -419,7 +419,7 @@ if HAVE_RUN:
     display(pd.DataFrame(table, dtype=object))
 else:
     print("data/t2_molcspy/ is missing")"""),
-    md("> **Question.** Give one advantage of each method. What would you change in mol-CSPy to find γ?"),
+    md("> **Question.** Give one advantage of each method, mol-CSPy and Clari-H."),
     md("""
 ---
 mol-CSPy: gitlab.com/mol-cspy/mol-cspy · Case *et al.*, *J. Chem. Theory Comput.* **12**, 910 (2016) ·
